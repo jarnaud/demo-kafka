@@ -84,7 +84,7 @@ public class Producer {
         Properties properties = loadProperties();
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
         Random random = new Random();
-        try {
+        try (producer) {
             for (int i = 0; i < nbMessages; i++) {
                 sendMessage(producer, random);
                 Thread.sleep(1000);
@@ -95,26 +95,24 @@ public class Producer {
     }
 
     private void sendMessage(KafkaProducer<String, String> producer, Random random) throws JsonProcessingException {
-        try (producer) {
-            // Random price generation.
-            double price = 100 + random.nextDouble(100);
-            double volume = 1000 + random.nextInt(10000);
+        // Random price generation.
+        double price = 100 + random.nextDouble(100);
+        double volume = 1000 + random.nextInt(10000);
 
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode node = mapper.createObjectNode();
-            node.put("ticker", ticker);
-            node.put("last", formatPrice(price));
-            node.put("volume", formatPrice(volume));
-            node.put("date", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
-            String msg = mapper.writer().writeValueAsString(node);
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode node = mapper.createObjectNode();
+        node.put("ticker", ticker);
+        node.put("last", formatPrice(price));
+        node.put("volume", formatPrice(volume));
+        node.put("date", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+        String msg = mapper.writer().writeValueAsString(node);
 
 
-            ProducerRecord<String, String> record = new ProducerRecord<>(topicName, msg);
-            log.debug("Created record: {}", record);
+        ProducerRecord<String, String> record = new ProducerRecord<>(topicName, msg);
+        log.debug("Created record: {}", record);
 
-            producer.send(record);
-            producer.flush();
-        }
+        producer.send(record);
+        producer.flush();
     }
 
     /**

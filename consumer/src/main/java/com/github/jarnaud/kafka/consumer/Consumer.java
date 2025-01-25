@@ -67,24 +67,6 @@ public class Consumer {
         }
     }
 
-    private void describeCluster(AdminClient admin) {
-        log.debug("--- Describing cluster ---");
-        try {
-            Collection<Node> nodes = admin.describeCluster().nodes().get();
-            if (nodes == null) {
-                log.info("There seem to be no nodes in the cluster!");
-            } else {
-                log.info(String.format("Count of nodes: %s\n", nodes.size()));
-                for (Node node : nodes) {
-                    log.info("\tnode {}: {}", node.id(), node);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error while describing cluster");
-            log.error(e.getMessage(), e);
-        }
-    }
-
     public void receiveMessages() {
         log.info("Market consumer starting");
         Properties properties = loadProperties();
