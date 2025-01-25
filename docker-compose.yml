@@ -1,27 +1,83 @@
-version: '3'
 services:
-  kafka-broker:
+
+  kafka0:
     image: apache/kafka:latest
-    container_name: kafka-broker
+    container_name: kafka0
     environment:
+      KAFKA_ENABLE_KRAFT: yes
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://localhost:9092,CONTROLLER://localhost:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_PROCESS_ROLES: broker,controller              # The node acts as both broker and controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka0:29092,CONTROLLER://kafka0:29093,PLAINTEXT_HOST://0.0.0.0:9092   # Ports for broker and controller
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka0:29092,PLAINTEXT_HOST://localhost:9090             # External listener for clients
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER         # Listener name for inter-controller communication
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Security protocol for listeners
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka0:29093    # Quorum voters for the controller in KRaft mode
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1           # Replication factor for the offsets topic
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1   # Replication factor for transaction logs
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1              # Minimum in-sync replicas for transactional logs
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0           # Initial delay before consumer group rebalancing
+      KAFKA_NUM_PARTITIONS: 1                             # Default number of partitions for new topics
     ports:
-      - "9092:9092"
+      - "9090:9092"
+
+#  kafka1:
+#    image: apache/kafka:latest
+#    container_name: kafka1
+#    environment:
+#      KAFKA_ENABLE_KRAFT: yes
+#      KAFKA_NODE_ID: 1
+#      KAFKA_PROCESS_ROLES: broker,controller              # The node acts as both broker and controller
+#      KAFKA_LISTENERS: PLAINTEXT://kafka1:29092,CONTROLLER://kafka1:29093,PLAINTEXT_HOST://0.0.0.0:9092   # Ports for broker and controller
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka0:29092,PLAINTEXT_HOST://localhost:9092             # External listener for clients
+#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER         # Listener name for inter-controller communication
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Security protocol for listeners
+#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:29093    # Quorum voters for the controller in KRaft mode
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1           # Replication factor for the offsets topic
+#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1   # Replication factor for transaction logs
+#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1              # Minimum in-sync replicas for transactional logs
+#      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0           # Initial delay before consumer group rebalancing
+##      KAFKA_NUM_PARTITIONS: 3                             # Default number of partitions for new topics
+#      KAFKA_NUM_PARTITIONS: 1                             # Default number of partitions for new topics
+#    ports:
+#      - "9091:9092"
+
   kafka-ui:
     container_name: kafka-ui
     image: provectuslabs/kafka-ui:latest
     ports:
-      - "8080:8080"
+      - "8099:8080"
     environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka0:29092
       DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      - kafka0
+
+  consumer:
+    image: consumer:1.0.0-SNAPSHOT
+    container_name: consumer
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_BOOTSTRAP: "kafka0:29092"
+      TICKER: "AMZN"
+    depends_on:
+      - kafka0
+
+  producer:
+    image: producer:1.0.0-SNAPSHOT
+    container_name: producer
+    build:
+      context: ./producer
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      KAFKA_BOOTSTRAP: "kafka0:29092"
+      TICKER: "AMZN"
+    depends_on:
+      - kafka0
+
